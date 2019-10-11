@@ -1,6 +1,134 @@
+/////////////////////////////////////////////////////////////
+/// Ferr GraphNet by Nick Klingensmith - Twitter @koujaku ///
+/////////////////////////////////////////////////////////////
+//                                                         //
+//                   __|INCLUDING|__                       //
+//                                                         //
+// When including this in your project, please select one  //
+// file where the implementation will go, and add the      //
+// implementation define before including! Like so:        //
+/*
+#define FERR_GRAPHNET_IMPLEMENT
+#include "ferr_graphnet.h"
+*/
+//                  __|BASIC USAGE|__                      //
+//                                                         //
+// Here's a quick example of fgn loading and displaying a  //
+// file! You can load from the file system via             //
+// fgn_load_file, or from  a string you already have via   //
+// fgn_load.                                               //
+/*
 
-#ifndef FERR_GRAPH_NET_H
-#define FERR_GRAPH_NET_H
+fgn_library_t lib = {};
+fgn_load_file(lib, "out_proc.fgn");
+fgn_lib_each (lib, [](fgn_graph_t &graph)
+{
+	printf("Graph - %s\n", graph.id);
+
+	fgn_graph_node_each(graph, [](fgn_node_t &node)
+	{
+		printf("%s: [in:%d, out:%d, keys:%d]\n", node.id, node.in_ct, node.out_ct, node.data.pair_ct);
+	});
+});
+fgn_destroy(lib);
+
+*/
+// And here's making a graph via code, and printing it!    //
+// Note that any time fgn provides you a char *, you'll    //
+// need to free() it when you're done with it.             //
+/*
+
+fgn_graph_t graph = {};
+fgn_graph_set_id(graph, "NewGraph");
+fgn_data_add(graph.data, "desc", "Key value pairs can even contain\nnew lines and \"quotes\" without any problems!");
+
+fgn_graph_idx n1 = fgn_graph_node_add(graph, "Start");
+fgn_graph_idx n2 = fgn_graph_node_add(graph, "Middle");
+fgn_graph_idx n3 = fgn_graph_node_add(graph, "End");
+fgn_data_add(fgn_graph_node_get(graph, n2).data, "cost", "100");
+
+fgn_graph_idx e1 = fgn_graph_edge_add(graph, n1, n2);
+fgn_graph_idx e2 = fgn_graph_edge_add(graph, "Start", "End");
+fgn_data_add(fgn_graph_edge_get(graph, e2).data, "distance", "5.1");
+
+char *text_graph = fgn_save(graph);
+printf("Output file:\n%s", text_graph);
+free(text_graph);
+
+fgn_destroy(graph);
+
+*/
+// Key value string pairs attached to the graph are        //
+// provided by default! But if you want to parse them into //
+// a binary data structure, you can use the parsing tools  //
+// to do this automatically.                               //
+// fgn does have a few parsing functions to convert common //
+// data types to and from string, but there's a decent     //
+// chance you may need to make one of your own! Please     //
+// refer to the fgn_parse functions for how to do this.    //
+/*
+
+struct node_data_t {
+	float slider;
+	float position[3];
+	const char *text;
+};
+
+fgn_parser_t node_parser = {};
+fgn_parser_create<node_data_t>(node_parser);
+fgn_parser_add(node_parser, "slider",   offsetof(node_data_t, slider),   fgn_parse_float,  fgn_write_float);
+fgn_parser_add(node_parser, "position", offsetof(node_data_t, position), fgn_parse_float3, fgn_write_float3);
+fgn_parser_add(node_parser, "text",     offsetof(node_data_t, text),     fgn_parse_string, fgn_write_string);
+
+fgn_library_t lib = {};
+fgn_load_file(lib, "out_proc.fgn");
+fgn_parse(lib, &node_parser);
+
+fgn_lib_each(lib, [](fgn_graph_t &graph)
+{
+	for (int i = 0, ct = fgn_graph_node_count(graph); i < ct; i += 1)
+	{
+		node_data_t &data = fgn_graph_node_data<node_data_t>(graph, i);
+		printf("<%g, %g, %g> - slider: %f - text: %s\n", 
+		data.position[0], data.position[1], data.position[2], data.slider, data.text);
+	}
+});
+
+fgn_destroy(lib);
+fgn_destroy(node_parser);
+
+*/
+//                                                         //
+//                    __|VERSIONS|__                       //
+// v1.0 - 2019-10                                          //
+// - Initial version! Put it to good use :)                //
+//                                                         //
+//                    __|LICENSE|__                        //
+//
+// MIT License
+// 
+// Copyright (c) 2019 Nick Klingensmith
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#ifndef FERR_GRAPHNET_H
+#define FERR_GRAPHNET_H
 
 #include <stdint.h>
 
@@ -80,6 +208,7 @@ fgn_graph_idx       fgn_lib_findid(const fgn_library_t &lib, const char   *graph
 inline int32_t      fgn_lib_count (const fgn_library_t &lib)                          { return lib.graph_ct; }
 inline fgn_graph_t &fgn_lib_get   (const fgn_library_t &lib, fgn_graph_idx graph_idx) { return lib.graphs[graph_idx]; }
 inline fgn_graph_t *fgn_lib_find  (const fgn_library_t &lib, const char   *graph_id ) { fgn_graph_idx i = fgn_lib_findid(lib, graph_id); return i == -1 ? nullptr : &lib.graphs[i]; }
+inline void         fgn_lib_each  (const fgn_library_t &lib, void (*each)(fgn_graph_t &graph)) { for (int i = 0, ct = fgn_lib_count(lib); i < ct; i += 1) each(fgn_lib_get(lib, i)); }
 
 ///////////////////////////////////////////
 /// Graph manipulation, Nodes and Edges ///
@@ -109,12 +238,14 @@ void               fgn_graph_node_delete(fgn_graph_t &graph, const char *node);
 inline fgn_node_t *fgn_graph_node_find  (const fgn_graph_t &graph, const char *id)   { fgn_node_idx i = fgn_graph_node_findid(graph, id); return i == -1 ? nullptr : &graph.nodes[i]; }
 inline int32_t     fgn_graph_node_count (const fgn_graph_t &graph)                   { return graph.node_ct; }
 inline fgn_node_t &fgn_graph_node_get   (const fgn_graph_t &graph, fgn_node_idx idx) { return graph.nodes[idx]; }
+inline void        fgn_graph_node_each  (const fgn_graph_t &graph, void (*each)(fgn_node_t &node)) { for (int i = 0, ct = fgn_graph_node_count(graph); i < ct; i += 1) each(fgn_graph_node_get(graph, i)); }
 
 fgn_edge_idx       fgn_graph_edge_add   (fgn_graph_t &graph, fgn_node_idx start, fgn_node_idx end);
 fgn_edge_idx       fgn_graph_edge_add   (fgn_graph_t &graph, const char *start, const char *end);
 void               fgn_graph_edge_delete(fgn_graph_t &graph, fgn_edge_idx edge);
 inline int32_t     fgn_graph_edge_count (const fgn_graph_t &graph)                   { return graph.edge_ct; }
 inline fgn_edge_t &fgn_graph_edge_get   (const fgn_graph_t &graph, fgn_edge_idx idx) { return graph.edges[idx]; }
+inline void        fgn_graph_edge_each  (const fgn_graph_t &graph, void (*each)(fgn_edge_t &edge)) { for (int i = 0, ct = fgn_graph_edge_count(graph); i < ct; i += 1) each(fgn_graph_edge_get(graph, i)); }
 
 ///////////////////////////////////////////
 
@@ -153,8 +284,9 @@ template<typename T> inline void fgn_parser_create(fgn_parser_t &parser) { parse
 void fgn_parser_add(fgn_parser_t &parser, char *name, int32_t offset,
 	bool  (*parse)(fgn_parse_state_t state, const char *value_text, void *out_data),
 	char *(*write)(fgn_parse_state_t state, void *value));
-void fgn_parse(fgn_graph_t &graph, const fgn_parser_t *parser_node = nullptr, const fgn_parser_t *parser_edge = nullptr, const fgn_parser_t *parser_graph = nullptr);
-void fgn_parse(fgn_library_t &lib, const fgn_parser_t *parser_node = nullptr, const fgn_parser_t *parser_edge = nullptr, const fgn_parser_t *parser_graph = nullptr);
+void fgn_parse  (fgn_graph_t   &graph, const fgn_parser_t *parser_node = nullptr, const fgn_parser_t *parser_edge = nullptr, const fgn_parser_t *parser_graph = nullptr);
+void fgn_parse  (fgn_library_t &lib, const fgn_parser_t *parser_node = nullptr, const fgn_parser_t *parser_edge = nullptr, const fgn_parser_t *parser_graph = nullptr);
+void fgn_destroy(fgn_parser_t  &parser);
 
 bool  fgn_parse_float (fgn_parse_state_t state, const char *value_text, void *out_data);
 char *fgn_write_float (fgn_parse_state_t state, void *value);
@@ -171,7 +303,7 @@ char *fgn_write_nodeid(fgn_parse_state_t state, void *value);
 ** //////////// Implementation! ////////////// **
 ** /////////////////////////////////////////// */
 
-#ifdef FERR_GRAPH_NET_IMPLEMENTATION
+#ifdef FERR_GRAPHNET_IMPLEMENT
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -631,7 +763,7 @@ void _fgn_parse(const fgn_parser_t &parser, fgn_parse_state_t state, fgn_data_t 
 	}
 	free(old_pairs);
 }
-void fgn_parse(fgn_graph_t &graph, const fgn_parser_t *parser_node, const fgn_parser_t *parser_edge, const fgn_parser_t *parser_graph ) {
+void fgn_parse  (fgn_graph_t   &graph, const fgn_parser_t *parser_node, const fgn_parser_t *parser_edge, const fgn_parser_t *parser_graph ) {
 	fgn_parse_state_t state = { graph, -1, -1 };
 
 	// Parse the graph's data
@@ -655,10 +787,14 @@ void fgn_parse(fgn_graph_t &graph, const fgn_parser_t *parser_node, const fgn_pa
 		}
 	}
 }
-void fgn_parse(fgn_library_t &lib, const fgn_parser_t *parser_node, const fgn_parser_t *parser_edge, const fgn_parser_t *parser_graph) {
+void fgn_parse  (fgn_library_t &lib, const fgn_parser_t *parser_node, const fgn_parser_t *parser_edge, const fgn_parser_t *parser_graph) {
 	for (int32_t i = 0; i < lib.graph_ct; i++) {
 		fgn_parse(lib.graphs[i], parser_node, parser_edge, parser_graph);
 	}
+}
+void fgn_destroy(fgn_parser_t  &parser) {
+	free(parser.items);
+	parser = {};
 }
 
 ///////////////////////////////////////////

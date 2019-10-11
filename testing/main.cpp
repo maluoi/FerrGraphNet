@@ -1,5 +1,5 @@
 
-#define FERR_GRAPH_NET_IMPLEMENTATION
+#define FERR_GRAPHNET_IMPLEMENT
 #include "../ferr_graphnet.h"
 #include <time.h>
 
@@ -9,7 +9,68 @@ struct node_data_t {
 	const char *text;
 };
 
+void example1() {
+	fgn_library_t lib = {};
+	fgn_load_file(lib, "out_proc.fgn");
+
+	fgn_lib_each(lib, [](fgn_graph_t &graph) {
+		printf("Graph - %s\n", graph.id);
+		fgn_graph_node_each(graph, [](fgn_node_t &node) {
+			printf("%s: [in:%d, out:%d, keys:%d]\n", node.id, node.in_ct, node.out_ct, node.data.pair_ct);
+		});
+	});
+
+	fgn_destroy(lib);
+}
+void example2() {
+	fgn_graph_t graph = {};
+	fgn_graph_set_id(graph, "NewGraph");
+	fgn_data_add(graph.data, "desc", "Key value pairs can even contain\nnew lines and \"quotes\" without any problems!");
+
+	fgn_graph_idx n1 = fgn_graph_node_add(graph, "Start");
+	fgn_graph_idx n2 = fgn_graph_node_add(graph, "Middle");
+	fgn_graph_idx n3 = fgn_graph_node_add(graph, "End");
+	fgn_data_add(fgn_graph_node_get(graph, n2).data, "cost", "100");
+
+	fgn_graph_idx e1 = fgn_graph_edge_add(graph, n1, n2);
+	fgn_graph_idx e2 = fgn_graph_edge_add(graph, "Start", "End");
+	fgn_data_add(fgn_graph_edge_get(graph, e2).data, "distance", "5.1");
+
+	char *text_graph = fgn_save(graph);
+	printf("Output file:\n%s", text_graph);
+	free(text_graph);
+
+	fgn_destroy(graph);
+}
+void example3() {
+	fgn_parser_t node_parser = {};
+	fgn_parser_create<node_data_t>(node_parser);
+	fgn_parser_add(node_parser, "slider",   offsetof(node_data_t, slider),   fgn_parse_float,  fgn_write_float);
+	fgn_parser_add(node_parser, "position", offsetof(node_data_t, position), fgn_parse_float3, fgn_write_float3);
+	fgn_parser_add(node_parser, "text",     offsetof(node_data_t, text),     fgn_parse_string, fgn_write_string);
+
+	fgn_library_t lib = {};
+	fgn_load_file(lib, "out_proc.fgn");
+	fgn_parse(lib, &node_parser);
+
+	fgn_lib_each(lib, [](fgn_graph_t &graph) {
+		for (int i = 0, ct = fgn_graph_node_count(graph); i < ct; i += 1) {
+			node_data_t &data = fgn_graph_node_data<node_data_t>(graph, i);
+			printf("<%g, %g, %g> - slider: %f - text: %s\n", 
+				data.position[0], data.position[1], data.position[2], data.slider, data.text);
+		}
+	});
+
+	fgn_destroy(lib);
+	fgn_destroy(node_parser);
+}
+
 int main() {
+
+	example1();
+	example2();
+	example3();
+
 	// Create a parser for the node_data_t struct
 	fgn_parser_t node_parser = {};
 	fgn_parser_create<node_data_t>(node_parser);
@@ -19,7 +80,7 @@ int main() {
 
 	// load from file!
 	fgn_library_t lib = {};
-	fgn_load_file   (lib, "out_proc.fgn");
+	fgn_load_file(lib, "out_proc.fgn");
 	fgn_parse(lib, &node_parser);
 
 	// Read some parsed data from the graph
@@ -83,5 +144,6 @@ int main() {
 	// 
 	fgn_destroy(lib);
 	fgn_destroy(graph);
+	fgn_destroy(node_parser);
 	return 0;
 }
