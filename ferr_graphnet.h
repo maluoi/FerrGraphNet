@@ -21,15 +21,16 @@
 
 fgn_library_t lib = {};
 fgn_load_file(lib, "out_proc.fgn");
-fgn_lib_each (lib, [](fgn_graph_t &graph)
+
+fgn_lib_each(lib, [](fgn_graph_t &graph)
 {
 	printf("Graph - %s\n", graph.id);
-
-	fgn_graph_node_each(graph, [](fgn_node_t &node)
+	fgn_graph_node_each(graph, [](auto g, fgn_node_t &node)
 	{
 		printf("%s: [in:%d, out:%d, keys:%d]\n", node.id, node.in_ct, node.out_ct, node.data.pair_ct);
 	});
 });
+
 fgn_destroy(lib);
 
 */
@@ -238,14 +239,14 @@ void               fgn_graph_node_delete(fgn_graph_t &graph, const char *node);
 inline fgn_node_t *fgn_graph_node_find  (const fgn_graph_t &graph, const char *id)   { fgn_node_idx i = fgn_graph_node_findid(graph, id); return i == -1 ? nullptr : &graph.nodes[i]; }
 inline int32_t     fgn_graph_node_count (const fgn_graph_t &graph)                   { return graph.node_ct; }
 inline fgn_node_t &fgn_graph_node_get   (const fgn_graph_t &graph, fgn_node_idx idx) { return graph.nodes[idx]; }
-inline void        fgn_graph_node_each  (const fgn_graph_t &graph, void (*each)(fgn_node_t &node)) { for (int i = 0, ct = fgn_graph_node_count(graph); i < ct; i += 1) each(fgn_graph_node_get(graph, i)); }
+inline void        fgn_graph_node_each  (fgn_graph_t &graph, void (*each)(fgn_graph_t &graph, fgn_node_t &node)) { for (int i = 0, ct = fgn_graph_node_count(graph); i < ct; i += 1) each(graph, fgn_graph_node_get(graph, i)); }
 
 fgn_edge_idx       fgn_graph_edge_add   (fgn_graph_t &graph, fgn_node_idx start, fgn_node_idx end);
 fgn_edge_idx       fgn_graph_edge_add   (fgn_graph_t &graph, const char *start, const char *end);
 void               fgn_graph_edge_delete(fgn_graph_t &graph, fgn_edge_idx edge);
 inline int32_t     fgn_graph_edge_count (const fgn_graph_t &graph)                   { return graph.edge_ct; }
 inline fgn_edge_t &fgn_graph_edge_get   (const fgn_graph_t &graph, fgn_edge_idx idx) { return graph.edges[idx]; }
-inline void        fgn_graph_edge_each  (const fgn_graph_t &graph, void (*each)(fgn_edge_t &edge)) { for (int i = 0, ct = fgn_graph_edge_count(graph); i < ct; i += 1) each(fgn_graph_edge_get(graph, i)); }
+inline void        fgn_graph_edge_each  (fgn_graph_t &graph, void (*each)(fgn_graph_t &graph, fgn_edge_t &edge)) { for (int i = 0, ct = fgn_graph_edge_count(graph); i < ct; i += 1) each(graph, fgn_graph_edge_get(graph, i)); }
 
 ///////////////////////////////////////////
 

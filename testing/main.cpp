@@ -13,9 +13,11 @@ void example1() {
 	fgn_library_t lib = {};
 	fgn_load_file(lib, "out_proc.fgn");
 
-	fgn_lib_each(lib, [](fgn_graph_t &graph) {
+	fgn_lib_each(lib, [](fgn_graph_t &graph)
+	{
 		printf("Graph - %s\n", graph.id);
-		fgn_graph_node_each(graph, [](fgn_node_t &node) {
+		fgn_graph_node_each(graph, [](auto g, fgn_node_t &node)
+		{
 			printf("%s: [in:%d, out:%d, keys:%d]\n", node.id, node.in_ct, node.out_ct, node.data.pair_ct);
 		});
 	});
