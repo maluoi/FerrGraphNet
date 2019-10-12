@@ -293,6 +293,8 @@ bool  fgn_parse_float (fgn_parse_state_t state, const char *value_text, void *ou
 char *fgn_write_float (fgn_parse_state_t state, void *value);
 bool  fgn_parse_float2(fgn_parse_state_t state, const char *value_text, void *out_data);
 char *fgn_write_float2(fgn_parse_state_t state, void *value);
+bool  fgn_parse_float3(fgn_parse_state_t state, const char *value_text, void *out_data);
+char *fgn_write_float3(fgn_parse_state_t state, void *value);
 bool  fgn_parse_int32 (fgn_parse_state_t state, const char *value_text, void *out_data);
 char *fgn_write_int32 (fgn_parse_state_t state, void *value);
 bool  fgn_parse_string(fgn_parse_state_t state, const char *value_text, void *out_data);
