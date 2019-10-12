@@ -281,7 +281,7 @@ struct _fgn_parse_item_t {
 };
 
 template<typename T> inline void fgn_parser_create(fgn_parser_t &parser) { parser.type_size = sizeof(T); }
-void fgn_parser_add(fgn_parser_t &parser, char *name, int32_t offset,
+void fgn_parser_add(fgn_parser_t &parser, const char *name, int32_t offset,
 	bool  (*parse)(fgn_parse_state_t state, const char *value_text, void *out_data),
 	char *(*write)(fgn_parse_state_t state, void *value));
 void fgn_parse  (fgn_graph_t   &graph, const fgn_parser_t *parser_node = nullptr, const fgn_parser_t *parser_edge = nullptr, const fgn_parser_t *parser_graph = nullptr);
