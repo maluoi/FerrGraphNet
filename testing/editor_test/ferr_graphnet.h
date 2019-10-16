@@ -321,7 +321,9 @@ char *fgn_write_nodeid(fgn_parse_state_t state, void *value);
 #ifdef FERR_GRAPHNET_IMPLEMENT
 
 #include <stdio.h>
+#include <string.h>
 #include <stdarg.h>
+#include <assert.h>
 
 ///////////////////////////////////////////
 /// Private helper functions            ///

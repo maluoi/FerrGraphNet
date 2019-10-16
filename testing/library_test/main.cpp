@@ -1,6 +1,6 @@
 
 #define FERR_GRAPHNET_IMPLEMENT
-#include "../ferr_graphnet.h"
+#include "../../ferr_graphnet.h"
 #include <time.h>
 
 struct node_data_t {
