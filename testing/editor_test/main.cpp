@@ -2,7 +2,7 @@
 #include "ImGui/imgui_impl_glfw.h"
 #include "ImGui/imgui_impl_opengl3.h"
 #define FERR_GRAPHNET_IMPLEMENT
-#include "ferr_graphnet.h"
+#include "../../ferr_graphnet.h"
 #include "fgn_editor.h"
 #include <stdio.h>
 #include <windows.h>

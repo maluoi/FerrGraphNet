@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ferr_graphnet.h"
+#include "../../ferr_graphnet.h"
 
 void fgn_editor_init();
 void fgn_editor_shutdown();

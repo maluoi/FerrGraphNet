@@ -30,8 +30,8 @@
     <ClInclude Include="ImGui\imstb_textedit.h">
       <Filter>ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="ferr_graphnet.h" />
     <ClInclude Include="fgn_editor.h" />
+    <ClInclude Include="..\..\ferr_graphnet.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ImGui\imgui.cpp">

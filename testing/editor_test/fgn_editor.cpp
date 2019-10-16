@@ -4,7 +4,7 @@
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_internal.h"
 
-#include "ferr_graphnet.h"
+#include "../../ferr_graphnet.h"
 
 ///////////////////////////////////////////
 
