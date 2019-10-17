@@ -27,51 +27,51 @@ int32_t        node_state_ct = 0;
 
 ///////////////////////////////////////////
 
-void fgn_editor_draw(fgn_library_t &lib);
-void fgn_editor_draw_bar(fgn_library_t *library, fgn_graph_t *graph);
-void fgn_editor_draw_node(fgn_graph_t &graph, fgn_node_t &node, editor_node_t &node_state, fgn_node_idx node_idx);
-void fgn_editor_draw_edge(fgn_graph_t &graph, fgn_edge_t &edge, fgn_edge_idx edge_idx);
-void fgn_editor_context_menu(fgn_graph_t &graph);
-ImVec2 fgn_editor_node_in (ImRect size, int index, int index_max) { return { size.Min.x, size.Min.y + (index / (float)index_max + (1 / (float)index_max) * 0.5f) * (size.Max.y-size.Min.y) }; }
-ImVec2 fgn_editor_node_out(ImRect size, int index, int index_max) { return { size.Max.x, size.Min.y + (index / (float)index_max + (1 / (float)index_max) * 0.5f) * (size.Max.y-size.Min.y) }; }
-void fgn_editor_select_in (fgn_graph_t &graph, fgn_node_idx in_idx);
-void fgn_editor_select_out(fgn_graph_t &graph, fgn_node_idx out_idx);
-void fgn_editor_id_popup(const char *title, void *data, bool (*create)(void *data, const char *id, const char **out_err));
+void fgne_draw(fgn_library_t &lib);
+void fgne_draw_bar(fgn_library_t *library, fgn_graph_t *graph);
+void fgne_draw_node(fgn_graph_t &graph, fgn_node_t &node, editor_node_t &node_state, fgn_node_idx node_idx);
+void fgne_draw_edge(fgn_graph_t &graph, fgn_edge_t &edge, fgn_edge_idx edge_idx);
+void fgne_context_menu(fgn_graph_t &graph);
+ImVec2 fgne_inouts_default(fgn_inout inout, ImVec2 min, ImVec2 max, int index, int index_max) { return { inout == fgn_in ? min.x : max.x, min.y + (index / (float)index_max + (1 / (float)index_max) * 0.5f) * (max.y-min.y) }; }
+ImVec2 fgne_inouts_center (fgn_inout inout, ImVec2 min, ImVec2 max, int index, int index_max) { return (min + max) / 2.f; }
+void fgne_select_in (fgn_graph_t &graph, fgn_node_idx in_idx);
+void fgne_select_out(fgn_graph_t &graph, fgn_node_idx out_idx);
+void fgne_id_popup(const char *title, void *data, bool (*create)(void *data, const char *id, const char **out_err));
 
 float dist_to_line_sq(ImVec2 a, ImVec2 b, ImVec2 pt);
 
-void fgn_editor_render_node_kvps(fgn_node_t &node);
+void fgne_meat_kvps(fgn_node_t &node);
 
 ///////////////////////////////////////////
 
-void fgn_editor_init() {
+void fgne_init() {
 }
 
 ///////////////////////////////////////////
 
-void fgn_editor_shutdown() {
+void fgne_shutdown() {
 	free(node_state);
 }
 
 ///////////////////////////////////////////
 
 bool todo_remove_me = true;
-void fgn_editor_draw(fgn_library_t &lib) {
+void fgne_draw(fgn_library_t &lib) {
 
 	if (todo_remove_me) {
 		fgn_parse(lib, &editor_parser);
 		todo_remove_me = false;
 	}
 	
-	fgn_editor_draw_bar(&lib, lib.graph_ct > lib.graph_ct > active_graph ? &lib.graphs[active_graph] : nullptr);
+	fgne_draw_bar(&lib, lib.graph_ct > lib.graph_ct > active_graph ? &lib.graphs[active_graph] : nullptr);
 
 	if (lib.graph_ct > active_graph && active_graph >= 0)
-		fgn_editor_draw(lib.graphs[active_graph]);
+		fgne_draw(lib.graphs[active_graph]);
 }
 
 ///////////////////////////////////////////
 
-void fgn_editor_draw_bar(fgn_library_t *library, fgn_graph_t *graph) {
+void fgne_draw_bar(fgn_library_t *library, fgn_graph_t *graph) {
 	ImGuiContext& g = *GImGui;
 	const ImGuiStyle& style = g.Style;
 	//ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
@@ -105,7 +105,7 @@ void fgn_editor_draw_bar(fgn_library_t *library, fgn_graph_t *graph) {
 	}
 
 	if (library != nullptr) {
-		fgn_editor_id_popup("Graph's Id", library, [](void *data, const char *id, const char **out_err) {
+		fgne_id_popup("Graph's Id", library, [](void *data, const char *id, const char **out_err) {
 			fgn_library_t *lib = (fgn_library_t*)data;
 			if (fgn_lib_findid(*lib, id) != -1) {
 				*out_err = "That id is already in use!";
@@ -122,7 +122,7 @@ void fgn_editor_draw_bar(fgn_library_t *library, fgn_graph_t *graph) {
 
 ///////////////////////////////////////////
 
-void fgn_editor_draw(fgn_graph_t &graph) {
+void fgne_draw(fgn_graph_t &graph) {
 	ImGui::BeginChild("ScrollArea", {0,0}, true, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove);
 
 	if (node_state_ct != graph.node_ct) {
@@ -133,13 +133,13 @@ void fgn_editor_draw(fgn_graph_t &graph) {
 	}
 
 	for (int32_t i = 0; i < graph.edge_ct; i++) {
-		fgn_editor_draw_edge(graph, graph.edges[i], i);
+		fgne_draw_edge(graph, graph.edges[i], i);
 	}
 	for (int32_t i = 0; i < graph.node_ct; i++) {
-		fgn_editor_draw_node(graph, graph.nodes[i], node_state[i], i);
+		fgne_draw_node(graph, graph.nodes[i], node_state[i], i);
 	}
 
-	fgn_editor_context_menu(graph);
+	fgne_context_menu(graph);
 
 	if (!ImGui::IsAnyItemHovered() && ImGui::IsWindowFocused()) {
 		// Drag the view around
@@ -166,15 +166,17 @@ void fgn_editor_draw(fgn_graph_t &graph) {
 	// Draw line from the active node to the mouse
 	if (selected_in != -1) {
 		int32_t ct = fgn_graph_node_get(graph, selected_in).in_ct;
+		ImRect size = node_state[selected_in].node_size;
 		ImGui::GetWindowDrawList()->AddLine(
-			fgn_editor_node_in(node_state[selected_in].node_size, ct, ct+1),
+			fgne_inouts_default(fgn_in, size.Min, size.Max, ct, ct+1),
 			ImGui::GetMousePos(), 
 			ImGui::GetColorU32({ 1,1,1,1 }));
 	}
 	if (selected_out != -1) {
 		int32_t ct = fgn_graph_node_get(graph, selected_out).out_ct;
+		ImRect size = node_state[selected_out].node_size;
 		ImGui::GetWindowDrawList()->AddLine(
-			fgn_editor_node_out(node_state[selected_out].node_size, ct, ct+1),
+			fgne_inouts_default(fgn_out, size.Min, size.Max, ct, ct+1),
 			ImGui::GetMousePos(), 
 			ImGui::GetColorU32({ 1,1,1,1 }));
 	}
@@ -202,7 +204,7 @@ void fgn_editor_draw(fgn_graph_t &graph) {
 
 ///////////////////////////////////////////
 
-void fgn_editor_draw_node(fgn_graph_t &graph, fgn_node_t &node, editor_node_t &node_state, fgn_node_idx node_idx) {
+void fgne_draw_node(fgn_graph_t &graph, fgn_node_t &node, editor_node_t &node_state, fgn_node_idx node_idx) {
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
 	ImGuiContext& g = *GImGui;
 	const ImGuiStyle& style = g.Style;
@@ -224,7 +226,7 @@ void fgn_editor_draw_node(fgn_graph_t &graph, fgn_node_t &node, editor_node_t &n
 	// Node content
 	ImGui::BeginGroup();
 	if (!node_state.hidden) {
-		fgn_editor_render_node_kvps(node);
+		fgne_meat_kvps(node);
 	} else {
 		ImVec2 pos = ImGui::GetCursorPos();
 		ImGui::ItemSize({ pos,pos + ImVec2{80,ImGui::GetFrameHeight()} });
@@ -262,19 +264,19 @@ void fgn_editor_draw_node(fgn_graph_t &graph, fgn_node_t &node, editor_node_t &n
 	window->DrawList->AddText(text_pos - ImVec2{ImGui::GetScrollX()-ImGui::GetWindowPos().x,0}, ImGui::GetColorU32(ImGuiCol_Text), node.id);
 	
 	// Draw edge buttons
-	ImVec2 pos    = fgn_editor_node_out({ node_min, node_max }, node.out_ct, node.out_ct+1) + ImVec2{ 0, -g.FontSize / 4.f };
+	ImVec2 pos    = fgne_inouts_default(fgn_out, node_min, node_max, node.out_ct, node.out_ct+1) + ImVec2{ 0, -g.FontSize / 4.f };
 	ImRect bounds = { pos, pos + ImVec2{ g.FontSize,g.FontSize } };
 	ImGui::RenderArrow(window->DrawList, pos, ImGui::GetColorU32(ImGuiCol_Text), ImGuiDir_Right);
 	if (ImGui::ButtonBehavior(bounds, ImGui::GetID("add_out"), &hovered, nullptr))
-		fgn_editor_select_out(graph, node_idx);
+		fgne_select_out(graph, node_idx);
 	if (hovered)
 		window->DrawList->AddCircleFilled(bounds.GetCenter(), ImMax(2.0f, g.FontSize * 0.5f), bg_col, 12);
 
-	pos    = fgn_editor_node_in({ node_min, node_max }, node.in_ct, node.in_ct+1) + ImVec2{ -g.FontSize, -g.FontSize / 4.f };
+	pos    = fgne_inouts_default(fgn_in, node_min, node_max, node.in_ct, node.in_ct+1) + ImVec2{ -g.FontSize, -g.FontSize / 4.f };
 	bounds = { pos, pos + ImVec2{ g.FontSize,g.FontSize } };
 	ImGui::RenderArrow(window->DrawList, pos, ImGui::GetColorU32(ImGuiCol_Text), ImGuiDir_Left);
 	if (ImGui::ButtonBehavior(bounds, ImGui::GetID("add_in"), &hovered, nullptr))
-		fgn_editor_select_in(graph, node_idx);
+		fgne_select_in(graph, node_idx);
 	if (hovered)
 		window->DrawList->AddCircleFilled(bounds.GetCenter(), ImMax(2.0f, g.FontSize * 0.5f), bg_col, 12);
 	
@@ -304,7 +306,7 @@ void fgn_editor_draw_node(fgn_graph_t &graph, fgn_node_t &node, editor_node_t &n
 
 ///////////////////////////////////////////
 
-void fgn_editor_draw_edge(fgn_graph_t &graph, fgn_edge_t &edge, fgn_edge_idx edge_idx) {
+void fgne_draw_edge(fgn_graph_t &graph, fgn_edge_t &edge, fgn_edge_idx edge_idx) {
 	fgn_node_t    &start_n = fgn_graph_node_get(graph, edge.start);
 	fgn_node_t    &end_n   = fgn_graph_node_get(graph, edge.end);
 	editor_node_t &start   = node_state[edge.start];
@@ -312,8 +314,8 @@ void fgn_editor_draw_edge(fgn_graph_t &graph, fgn_edge_t &edge, fgn_edge_idx edg
 	int32_t start_i = 0, end_i = 0;
 	for (int32_t i = 0; i < start_n.out_ct; i++) if (start_n.out_edges[i] == edge_idx) { start_i = i; break; }
 	for (int32_t i = 0; i < end_n  .in_ct;  i++) if (end_n  .in_edges [i] == edge_idx) { end_i   = i; break; }
-	ImVec2 p1 = fgn_editor_node_out(start.node_size, start_i, start_n.out_ct+1);
-	ImVec2 p2 = fgn_editor_node_in (end  .node_size, end_i,   end_n  .in_ct +1);
+	ImVec2 p1 = fgne_inouts_default(fgn_out, start.node_size.Min, start.node_size.Max, start_i, start_n.out_ct+1);
+	ImVec2 p2 = fgne_inouts_default(fgn_in,  end  .node_size.Min, end  .node_size.Max, end_i,   end_n  .in_ct +1);
 	float dist = dist_to_line_sq(p1, p2, ImGui::GetMousePos());
 
 	ImGui::GetWindowDrawList()->AddBezierCurve(p1, p1 + ImVec2{60, 0}, p2 - ImVec2{60, 0}, p2, dist < 30 * 30 ? ImGui::GetColorU32({ .7f,0,0,1 }) : ImGui::GetColorU32({ .5f,.5f,.5f,1 }), 1);
@@ -334,7 +336,7 @@ void fgn_editor_draw_edge(fgn_graph_t &graph, fgn_edge_t &edge, fgn_edge_idx edg
 
 ///////////////////////////////////////////
 
-void fgn_editor_context_menu(fgn_graph_t &graph) {
+void fgne_context_menu(fgn_graph_t &graph) {
 	bool open_node_name = false;
 	static ImVec2 context_pos = {};
 	if (!ImGui::IsAnyItemHovered() && 
@@ -364,7 +366,7 @@ void fgn_editor_context_menu(fgn_graph_t &graph) {
 		ImGui::OpenPopup("Node's Id");
 		open_node_name = false;
 	}
-	fgn_editor_id_popup("Node's Id", &graph, [](void *data, const char *id, const char **out_err) {
+	fgne_id_popup("Node's Id", &graph, [](void *data, const char *id, const char **out_err) {
 		fgn_graph_t *graph = (fgn_graph_t*)data;
 		if (fgn_graph_node_findid(*graph, id) != -1) {
 			*out_err = "That id is already in use!";
@@ -381,7 +383,7 @@ void fgn_editor_context_menu(fgn_graph_t &graph) {
 
 ///////////////////////////////////////////
 
-void fgn_editor_select_in(fgn_graph_t &graph, fgn_node_idx in_idx) {
+void fgne_select_in(fgn_graph_t &graph, fgn_node_idx in_idx) {
 	if (selected_out == in_idx) return;
 	selected_in = in_idx;
 	if (selected_in != -1 && selected_out != -1) {
@@ -395,7 +397,7 @@ void fgn_editor_select_in(fgn_graph_t &graph, fgn_node_idx in_idx) {
 
 ///////////////////////////////////////////
 
-void fgn_editor_select_out(fgn_graph_t &graph, fgn_node_idx out_idx) {
+void fgne_select_out(fgn_graph_t &graph, fgn_node_idx out_idx) {
 	if (selected_in == out_idx) return;
 	selected_out = out_idx;
 	if (selected_in != -1 && selected_out != -1) {
@@ -409,7 +411,7 @@ void fgn_editor_select_out(fgn_graph_t &graph, fgn_node_idx out_idx) {
 
 ///////////////////////////////////////////
 
-void fgn_editor_id_popup(const char *title, void *data, bool (*create)(void *data, const char *id, const char **out_err)) {
+void fgne_id_popup(const char *title, void *data, bool (*create)(void *data, const char *id, const char **out_err)) {
 	static bool open = true;
 	if (ImGui::BeginPopupModal(title, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
 		static char id_text [128] = {};
@@ -466,7 +468,7 @@ float dist_to_line_sq(ImVec2 a, ImVec2 b, ImVec2 pt) {
 
 ///////////////////////////////////////////
 
-void fgn_editor_render_node_kvps(fgn_node_t &node) {
+void fgne_meat_kvps(fgn_node_t &node) {
 	ImGui::PushItemWidth(150);
 
 	char new_value[512];

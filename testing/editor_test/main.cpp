@@ -143,7 +143,7 @@ int main(int, char**)
 
 	sprintf_s(app_library_file, "test.fgn");
 	fgn_load_file(app_library, app_library_file);
-	fgn_editor_init();
+	fgne_init();
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -172,7 +172,7 @@ int main(int, char**)
 		Sleep(1);
     }
 
-	fgn_editor_shutdown();
+	fgne_shutdown();
 	fgn_destroy(app_library);
 
     // Cleanup
@@ -228,7 +228,7 @@ void editor_window() {
 		ImGui::EndMenuBar();
 	}
 
-	fgn_editor_draw(app_library);
+	fgne_draw(app_library);
 
 	ImGui::End();
 }
