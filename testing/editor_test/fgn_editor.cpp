@@ -18,11 +18,17 @@ fgn_node_idx  delete_edge  = -1;
 editor_node_t *node_state    = nullptr;
 int32_t        node_state_ct = 0;
 
+const fgne_editor_config_t fgne_default_config = {
+	fgne_shell_default,
+	fgne_meat_kvps,
+	fgne_edge_curve,
+	fgne_inouts_default
+};
+
 ///////////////////////////////////////////
 
-void fgne_draw(fgn_library_t &lib);
 void fgne_draw_bar(fgn_library_t *library, fgn_graph_t *graph);
-void fgne_draw_edge(fgn_graph_t &graph, fgn_edge_t &edge, fgn_edge_idx edge_idx);
+void fgne_draw_edge(const fgne_editor_config_t &config, fgn_graph_t &graph, fgn_edge_idx edge_idx);
 void fgne_context_menu(fgn_graph_t &graph);
 ImVec2 fgne_inouts_default(fgn_inout inout, ImVec2 min, ImVec2 max, int index, int index_max) { return { inout == fgn_in ? min.x : max.x, min.y + (index / (float)index_max + (1 / (float)index_max) * 0.5f) * (max.y-min.y) }; }
 ImVec2 fgne_inouts_center (fgn_inout inout, ImVec2 min, ImVec2 max, int index, int index_max) { return (min + max) / 2.f; }
@@ -31,8 +37,6 @@ void fgne_select_out(fgn_graph_t &graph, fgn_node_idx out_idx);
 void fgne_id_popup(const char *title, void *data, bool (*create)(void *data, const char *id, const char **out_err));
 
 float dist_to_line_sq(ImVec2 a, ImVec2 b, ImVec2 pt);
-
-void fgne_meat_kvps(fgn_node_t &node);
 
 ///////////////////////////////////////////
 
@@ -48,7 +52,7 @@ void fgne_shutdown() {
 ///////////////////////////////////////////
 
 bool todo_remove_me = true;
-void fgne_draw(fgn_library_t &lib) {
+void fgne_draw(fgn_library_t &lib, fgne_editor_state_t &state, const fgne_editor_config_t *config) {
 
 	if (todo_remove_me) {
 		fgn_parse(lib, &editor_parser);
@@ -58,7 +62,7 @@ void fgne_draw(fgn_library_t &lib) {
 	fgne_draw_bar(&lib, lib.graph_ct > lib.graph_ct > active_graph ? &lib.graphs[active_graph] : nullptr);
 
 	if (lib.graph_ct > active_graph && active_graph >= 0)
-		fgne_draw(lib.graphs[active_graph]);
+		fgne_draw(lib.graphs[active_graph], state, config);
 }
 
 ///////////////////////////////////////////
@@ -114,7 +118,10 @@ void fgne_draw_bar(fgn_library_t *library, fgn_graph_t *graph) {
 
 ///////////////////////////////////////////
 
-void fgne_draw(fgn_graph_t &graph) {
+void fgne_draw(fgn_graph_t &graph, fgne_editor_state_t &state, const fgne_editor_config_t *config) {
+	if (config == nullptr)
+		config = &fgne_default_config;
+
 	ImGui::BeginChild("ScrollArea", {0,0}, true, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove);
 
 	// Make sure our state tracking has memory enough for each item
@@ -129,22 +136,26 @@ void fgne_draw(fgn_graph_t &graph) {
 	// We're pushing in some rood ids so that the draw function
 	// can use whatever ids it wants without having to worry about
 	// overlap.
-	ImGui::PushID("edges");
-	for (int32_t i = 0; i < graph.edge_ct; i++) {
-		ImGui::PushID(i);
-		fgne_draw_edge(graph, graph.edges[i], i);
+	if (config->node_edge != nullptr) {
+		ImGui::PushID("edges");
+		for (int32_t i = 0; i < graph.edge_ct; i++) {
+			ImGui::PushID(i);
+			fgne_draw_edge(*config, graph, i);
+			ImGui::PopID();
+		}
 		ImGui::PopID();
 	}
-	ImGui::PopID();
 
 	// And now draw the nodes!
-	ImGui::PushID("nodes");
-	for (int32_t i = 0; i < graph.node_ct; i++) {
-		ImGui::PushID(i);
-		fgne_shell_default(graph, i, node_state[i]);
+	if (config->node_shell != nullptr) {
+		ImGui::PushID("nodes");
+		for (int32_t i = 0; i < graph.node_ct; i++) {
+			ImGui::PushID(i);
+			config->node_shell(graph, i, node_state[i]);
+			ImGui::PopID();
+		}
 		ImGui::PopID();
 	}
-	ImGui::PopID();
 
 	fgne_context_menu(graph);
 
@@ -236,7 +247,7 @@ void fgne_shell_default(fgn_graph_t &graph, fgn_node_idx node_idx, editor_node_t
 	// Node content
 	ImGui::BeginGroup();
 	if (!node_state.hidden) {
-		fgne_meat_kvps(node);
+		fgne_meat_kvps(graph, node_idx);
 	} else {
 		ImVec2 pos = ImGui::GetCursorPos();
 		ImGui::ItemSize({ pos,pos + ImVec2{80,ImGui::GetFrameHeight()} });
@@ -315,7 +326,8 @@ void fgne_shell_default(fgn_graph_t &graph, fgn_node_idx node_idx, editor_node_t
 
 ///////////////////////////////////////////
 
-void fgne_draw_edge(fgn_graph_t &graph, fgn_edge_t &edge, fgn_edge_idx edge_idx) {
+void fgne_draw_edge(const fgne_editor_config_t &config, fgn_graph_t &graph, fgn_edge_idx edge_idx) {
+	fgn_edge_t    &edge    = fgn_graph_edge_get(graph, edge_idx);
 	fgn_node_t    &start_n = fgn_graph_node_get(graph, edge.start);
 	fgn_node_t    &end_n   = fgn_graph_node_get(graph, edge.end);
 	editor_node_t &start   = node_state[edge.start];
@@ -323,14 +335,35 @@ void fgne_draw_edge(fgn_graph_t &graph, fgn_edge_t &edge, fgn_edge_idx edge_idx)
 	int32_t start_i = 0, end_i = 0;
 	for (int32_t i = 0; i < start_n.out_ct; i++) if (start_n.out_edges[i] == edge_idx) { start_i = i; break; }
 	for (int32_t i = 0; i < end_n  .in_ct;  i++) if (end_n  .in_edges [i] == edge_idx) { end_i   = i; break; }
-	ImVec2 p1 = fgne_inouts_default(fgn_out, start.node_min, start.node_max, start_i, start_n.out_ct+1);
-	ImVec2 p2 = fgne_inouts_default(fgn_in,  end  .node_min, end  .node_max, end_i,   end_n  .in_ct +1);
+	ImVec2 p1 = config.node_inouts(fgn_out, start.node_min, start.node_max, start_i, start_n.out_ct+1);
+	ImVec2 p2 = config.node_inouts(fgn_in,  end  .node_min, end  .node_max, end_i,   end_n  .in_ct +1);
+
+	config.node_edge(graph, edge_idx, p1, p2);
+}
+
+///////////////////////////////////////////
+
+void fgne_edge_curve(fgn_graph_t &graph, fgn_edge_idx edge_idx, ImVec2 p1, ImVec2 p2) {
 	float dist = dist_to_line_sq(p1, p2, ImGui::GetMousePos());
 
 	ImGui::GetWindowDrawList()->AddBezierCurve(p1, p1 + ImVec2{60, 0}, p2 - ImVec2{60, 0}, p2, dist < 30 * 30 ? ImGui::GetColorU32({ .7f,0,0,1 }) : ImGui::GetColorU32({ .5f,.5f,.5f,1 }), 1);
-	/*ImGui::GetWindowDrawList()->AddLine(
-		p1, p2, 
-		dist < 30*30 ? ImGui::GetColorU32({ .7f,0,0,1 }) : ImGui::GetColorU32({ .5f,.5f,.5f,1 }));*/
+
+	if (dist < 30*30) {
+		ImVec2 size = ImVec2{ GImGui->FontSize / 2, GImGui->FontSize / 2 } + GImGui->Style.FramePadding;
+		ImGui::SetCursorPos((p1 + p2) / 2);
+		if (ImGui::CloseButton(ImGui::GetID("delete_edge"), (p1 + p2) / 2 - size)) {
+			delete_edge = edge_idx;
+		}
+	}
+}
+
+///////////////////////////////////////////
+
+void fgne_edge_straight(fgn_graph_t &graph, fgn_edge_idx edge_idx, ImVec2 p1, ImVec2 p2) {
+	float dist = dist_to_line_sq(p1, p2, ImGui::GetMousePos());
+
+	ImGui::GetWindowDrawList()->AddLine( p1, p2, 
+		dist < 30*30 ? ImGui::GetColorU32({ .7f,0,0,1 }) : ImGui::GetColorU32({ .5f,.5f,.5f,1 }));
 
 	if (dist < 30*30) {
 		ImVec2 size = ImVec2{ GImGui->FontSize / 2, GImGui->FontSize / 2 } + GImGui->Style.FramePadding;
@@ -475,7 +508,8 @@ float dist_to_line_sq(ImVec2 a, ImVec2 b, ImVec2 pt) {
 
 ///////////////////////////////////////////
 
-void fgne_meat_kvps(fgn_node_t &node) {
+void fgne_meat_kvps(fgn_graph_t &graph, fgn_node_idx node_idx) {
+	fgn_node_t &node = fgn_graph_node_get(graph, node_idx);
 	ImGui::PushItemWidth(150);
 
 	char new_value[512];

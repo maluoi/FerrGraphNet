@@ -236,7 +236,8 @@ void editor_window() {
 		ImGui::EndMenuBar();
 	}
 
-	fgne_draw(app_library);
+	static fgne_editor_state_t state;
+	fgne_draw(app_library, state);
 
 	ImGui::End();
 }
