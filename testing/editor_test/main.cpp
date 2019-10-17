@@ -193,6 +193,12 @@ void editor_window() {
 	
 	if (ImGui::BeginMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
+			if (ImGui::MenuItem("New")) {
+				fgn_destroy(app_library);
+				app_library_file[0] = '\0';
+				app_library = {};
+			}
+			ImGui::Separator();
 			if (ImGui::MenuItem("Open")) {
 				char file[1024];
 				file[0] = '\0';
@@ -202,7 +208,7 @@ void editor_window() {
 					fgn_load_file(app_library, app_library_file);
 				}
 			}
-			if (ImGui::MenuItem("Save")) {
+			if (ImGui::MenuItem("Save", nullptr, nullptr, app_library_file[0] != '\0')) {
 				if (strcmp(app_library_file, "") != 0) {
 					fgn_save_file(app_library, app_library_file);
 				}
@@ -216,7 +222,9 @@ void editor_window() {
 				}
 			}
 			ImGui::Separator();
-			if (ImGui::MenuItem("Exit")) {}
+			if (ImGui::MenuItem("Exit")) {
+				glfwSetWindowShouldClose(window, 1);
+			}
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("View")) {
