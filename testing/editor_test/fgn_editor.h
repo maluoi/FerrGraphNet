@@ -25,7 +25,7 @@ struct fgne_editor_state_t {
 
 typedef void  (*fgne_func_meat_t   )(fgn_graph_t &graph, fgn_node_idx node_idx);
 typedef void  (*fgne_func_edge_t   )(fgn_graph_t &graph, fgn_edge_idx edge_idx, ImVec2 p1, ImVec2 p2);
-typedef void  (*fgne_func_shell_t  )(fgn_graph_t &graph, fgn_node_idx node_idx, editor_node_t &node_state, fgne_func_meat_t node_meat);
+typedef bool  (*fgne_func_shell_t  )(fgn_graph_t &graph, fgn_node_idx node_idx, editor_node_t &node_state, fgne_func_meat_t node_meat);
 typedef ImVec2(*fgne_func_inouts_t )(fgn_inout inout, ImVec2 min, ImVec2 max, int index, int index_max);
 typedef void  (*fgne_func_newnode_t)(fgn_graph_t &graph, const char *id, ImVec2 pos);
 
@@ -48,8 +48,8 @@ void fgne_draw(fgn_graph_t   &graph, fgne_editor_state_t &state, const fgne_edit
 
 // Configuration examples and defaults
 
-void fgne_shell_default(fgn_graph_t &graph, fgn_node_idx node_idx, editor_node_t &node_state, fgne_func_meat_t node_meat);
-void fgne_shell_circle (fgn_graph_t &graph, fgn_node_idx node_idx, editor_node_t &node_state, fgne_func_meat_t node_meat);
+bool fgne_shell_default(fgn_graph_t &graph, fgn_node_idx node_idx, editor_node_t &node_state, fgne_func_meat_t node_meat);
+bool fgne_shell_circle (fgn_graph_t &graph, fgn_node_idx node_idx, editor_node_t &node_state, fgne_func_meat_t node_meat);
 
 void fgne_meat_kvps(fgn_graph_t &graph, fgn_node_idx node_idx);
 void fgne_meat_name(fgn_graph_t &graph, fgn_node_idx node_idx);

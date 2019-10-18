@@ -145,7 +145,16 @@ void fgne_draw(fgn_graph_t &graph, fgne_editor_state_t &state, const fgne_editor
 		ImGui::PushID("nodes");
 		for (int32_t i = 0; i < graph.node_ct; i++) {
 			ImGui::PushID(i);
-			config->shell_func(graph, i, node_state[i], config->meat_func);
+			if (config->shell_func(graph, i, node_state[i], config->meat_func)) {
+				fgn_node_t &node = fgn_graph_node_get(graph, i);
+				node.position[0] += ImGui::GetMouseDragDelta(0).x;
+				node.position[1] += ImGui::GetMouseDragDelta(0).y;
+				ImGui::ResetMouseDragDelta(0);
+				if (node.position[0] < 0)
+					node.position[0] = 0;
+				if (node.position[1] < 0)
+					node.position[1] = 0;
+			}
 			ImGui::PopID();
 		}
 		ImGui::PopID();
@@ -216,19 +225,19 @@ void fgne_draw(fgn_graph_t &graph, fgne_editor_state_t &state, const fgne_editor
 
 ///////////////////////////////////////////
 
-void fgne_shell_default(fgn_graph_t &graph, fgn_node_idx node_idx, editor_node_t &node_state, fgne_func_meat_t node_meat) {
+bool fgne_shell_default(fgn_graph_t &graph, fgn_node_idx node_idx, editor_node_t &node_state, fgne_func_meat_t node_meat) {
 	fgn_node_t   &node   = fgn_graph_node_get(graph, node_idx);
 	ImGuiWindow  *window = ImGui::GetCurrentWindow();
 	ImGuiContext &g      = *GImGui;
 	ImGuiStyle   &style  = ImGui::GetStyle();
 
-	// Begin the box
-	ImVec2 node_pos = { node.position[0],node.position[1] };
-	ImGui::SetCursorPos(node_pos);
-	ImGui::BeginGroup();
-
 	const ImVec2 label_size   = ImGui::CalcTextSize(node.id, nullptr, false);
 	const float  frame_height = fmaxf(fminf(window->DC.CurrLineSize.y, g.FontSize + style.FramePadding.y*2), label_size.y + style.FramePadding.y*2);
+
+	// Begin the box
+	ImVec2 node_pos = { node.position[0],node.position[1] + frame_height };
+	ImGui::SetCursorPos(node_pos);
+	ImGui::BeginGroup();
 
 	// Draw the background first, we'll use the previous frame's size and position. A bit laggy when resizing, but not bad.
 	window->DrawList->AddRectFilled(node_state.node_min, node_state.node_max, ImGui::GetColorU32(ImGuiCol_WindowBg), style.WindowRounding, ImDrawCornerFlags_All);
@@ -244,71 +253,53 @@ void fgne_shell_default(fgn_graph_t &graph, fgn_node_idx node_idx, editor_node_t
 	ImGui::EndGroup();
 
 	// Find the bounds of the node
-	ImVec2 node_min = ImGui::GetItemRectMin();
-	ImVec2 node_max = ImGui::GetItemRectMax();
-	node_min -= style.FramePadding;
-	node_max += style.FramePadding;
-	node_state.node_min = node_min;
-	node_state.node_max = node_max;
+	node_state.node_min = ImGui::GetItemRectMin() - style.FramePadding - ImVec2{0,frame_height};
+	node_state.node_max = ImGui::GetItemRectMax() + style.FramePadding ;
 	
 	// Add a header to the node
-	
-	node_min.y -= frame_height;
-	ImVec2       node_head_max = { node_max.x, node_min.y + frame_height };
+	ImVec2       node_head_max = { node_state.node_max.x, node_state.node_min.y + frame_height };
 	const float  text_offset_x = g.FontSize + style.FramePadding.x;
-	ImVec2       text_pos = { node_pos.x + text_offset_x, node_min.y + fmaxf(style.FramePadding.y, window->DC.CurrLineTextBaseOffset) };
+	ImVec2       text_pos      = { node_pos.x + text_offset_x, node_state.node_min.y + fmaxf(style.FramePadding.y, window->DC.CurrLineTextBaseOffset) };
 	
 	// Manage the state of the node itself
-	bool held = false, hovered = false, is_open = true;
-	bool pressed = ImGui::ButtonBehavior({ node_min + ImVec2{text_offset_x,0}, node_head_max + ImVec2{-text_offset_x, 0} }, window->GetID("header"), &hovered, &held);
+	bool held = false, hovered = false;
+	ImRect header_bounds = { node_state.node_min + ImVec2{text_offset_x,0}, node_head_max + ImVec2{-text_offset_x, 0} };
+	ImGui::ButtonBehavior(header_bounds, window->GetID("header"), &hovered, &held);
 	ImU32 bg_col = ImGui::GetColorU32((held) ? ImGuiCol_HeaderActive : hovered ? ImGuiCol_HeaderHovered : ImGuiCol_Header);
 
 	// Draw the back of the node
-	window->DrawList->AddRectFilled(node_min, node_head_max, bg_col, style.WindowRounding, ImDrawCornerFlags_Top);
-	//draw_list->AddRectFilled(node_min + ImVec2{0,frame_height}, node_max, node_back_col, style.WindowRounding, ImDrawCornerFlags_Bot);
-	window->DrawList->AddRect(node_min, node_max, ImGui::GetColorU32(ImGuiCol_Border), style.WindowRounding, ImDrawCornerFlags_All, style.WindowBorderSize);
+	window->DrawList->AddRectFilled(node_state.node_min, node_head_max, bg_col, style.WindowRounding, ImDrawCornerFlags_Top);
+	window->DrawList->AddRect      (node_state.node_min, node_state.node_max, ImGui::GetColorU32(ImGuiCol_Border), style.WindowRounding, ImDrawCornerFlags_All, style.WindowBorderSize);
 	
 	// Draw the header buttons
-	if (ImGui::CollapseButton(window->GetID("collapse"), ImVec2(node_min.x, node_min.y), nullptr)) { node_state.hidden = !node_state.hidden; }
-	if (ImGui::CloseButton(window->GetID("close"), ImVec2(node_max.x - text_offset_x, node_min.y))) { delete_node = node_idx;  }
+	if (ImGui::CollapseButton(window->GetID("collapse"), ImVec2(node_state.node_min.x, node_state.node_min.y), nullptr)) { node_state.hidden = !node_state.hidden; }
+	if (ImGui::CloseButton   (window->GetID("close"),    ImVec2(node_state.node_max.x - text_offset_x, node_state.node_min.y))) { delete_node = node_idx;  }
 	window->DrawList->AddText(text_pos - ImVec2{ImGui::GetScrollX()-ImGui::GetWindowPos().x,0}, ImGui::GetColorU32(ImGuiCol_Text), node.id);
 	
 	// Draw edge buttons
-	ImVec2 pos    = fgne_inouts_default(fgn_out, node_min, node_max, node.out_ct, node.out_ct+1) + ImVec2{ 0, -g.FontSize / 4.f };
+	float vcenter = node_state.node_min.y + (node_state.node_max.y - node_state.node_min.y) / 2;
+	ImVec2 pos    = ImVec2{ node_state.node_max.x, vcenter }  + ImVec2{ 0, -g.FontSize / 4.f };
 	ImRect bounds = { pos, pos + ImVec2{ g.FontSize,g.FontSize } };
 	ImGui::RenderArrow(window->DrawList, pos, ImGui::GetColorU32(ImGuiCol_Text), ImGuiDir_Right);
 	if (ImGui::ButtonBehavior(bounds, ImGui::GetID("add_out"), &hovered, nullptr))
 		fgne_select_out(graph, node_idx);
-	if (hovered)
-		window->DrawList->AddCircleFilled(bounds.GetCenter(), ImMax(2.0f, g.FontSize * 0.5f), bg_col, 12);
+	window->DrawList->AddCircleFilled(bounds.GetCenter(), ImMax(2.0f, g.FontSize * 0.5f), ImGui::GetColorU32(ImGuiCol_ButtonHovered, hovered?1:0));
 
-	pos    = fgne_inouts_default(fgn_in, node_min, node_max, node.in_ct, node.in_ct+1) + ImVec2{ -g.FontSize, -g.FontSize / 4.f };
+	pos    = ImVec2{ node_state.node_min.x, vcenter } + ImVec2{ -g.FontSize, -g.FontSize / 4.f };
 	bounds = { pos, pos + ImVec2{ g.FontSize,g.FontSize } };
 	ImGui::RenderArrow(window->DrawList, pos, ImGui::GetColorU32(ImGuiCol_Text), ImGuiDir_Left);
 	if (ImGui::ButtonBehavior(bounds, ImGui::GetID("add_in"), &hovered, nullptr))
 		fgne_select_in(graph, node_idx);
-	if (hovered)
-		window->DrawList->AddCircleFilled(bounds.GetCenter(), ImMax(2.0f, g.FontSize * 0.5f), bg_col, 12);
-	
-	// Drag behavior
-	if (pressed)
-		ImGui::ResetMouseDragDelta(0);
-	if (held) {
-		node.position[0] += ImGui::GetMouseDragDelta(0).x;
-		node.position[1] += ImGui::GetMouseDragDelta(0).y;
-		ImGui::ResetMouseDragDelta(0);
-	}
-	if (node.position[0] < 0)
-		node.position[0] = 0;
-	if (node.position[1] < frame_height)
-		node.position[1] = frame_height;
+	window->DrawList->AddCircleFilled(bounds.GetCenter(), ImMax(2.0f, g.FontSize * 0.5f), ImGui::GetColorU32(ImGuiCol_ButtonHovered, hovered?1:0));
 
 	ImGui::EndGroup();
+
+	return held;
 }
 
 ///////////////////////////////////////////
 
-void fgne_shell_circle(fgn_graph_t &graph, fgn_node_idx node_idx, editor_node_t &node_state, fgne_func_meat_t node_meat) {
+bool fgne_shell_circle(fgn_graph_t &graph, fgn_node_idx node_idx, editor_node_t &node_state, fgne_func_meat_t node_meat) {
 	fgn_node_t &node     = fgn_graph_node_get(graph, node_idx);
 	ImVec2      node_pos = { node.position[0], node.position[1] };
 	ImGuiStyle &style    = ImGui::GetStyle();
@@ -330,36 +321,27 @@ void fgne_shell_circle(fgn_graph_t &graph, fgn_node_idx node_idx, editor_node_t 
 	node_state.node_min = center - ImVec2{radius, radius};
 	node_state.node_max = center + ImVec2{radius, radius};
 
+	// Draw edge buttons
+	const float sz = 8;
+	bool hovered = false;
+	ImVec2 pos    = node_state.node_max - ImVec2{ sz, radius + sz };
+	ImRect bounds = { pos, pos + ImVec2{ sz*2,sz*2 } };
+	if (ImGui::ButtonBehavior(bounds, ImGui::GetID("add_out"), &hovered, nullptr))
+		fgne_select_out(graph, node_idx);
+	ImGui::GetWindowDrawList()->AddCircleFilled(bounds.GetCenter(), sz, hovered ? ImGui::GetColorU32(ImGuiCol_ButtonHovered) : ImGui::GetColorU32(ImGuiCol_Button));
+
+	pos    = node_state.node_min + ImVec2{ -sz, radius - sz };
+	bounds = { pos, pos + ImVec2{ sz*2,sz*2 } };
+	if (ImGui::ButtonBehavior(bounds, ImGui::GetID("add_in"), &hovered, nullptr))
+		fgne_select_in(graph, node_idx);
+	ImGui::GetWindowDrawList()->AddCircleFilled(bounds.GetCenter(), sz, hovered ? ImGui::GetColorU32(ImGuiCol_ButtonHovered) : ImGui::GetColorU32(ImGuiCol_Button));
+
 	// Button behavior, and a border circle
-	bool held = false, hovered = false, is_open = true;
+	bool held = false, is_open = true;
 	bool pressed = ImGui::ButtonBehavior({ node_state.node_min, node_state.node_max }, ImGui::GetID("header"), &hovered, &held);
 	ImGui::GetWindowDrawList()->AddCircle((node_state.node_min + node_state.node_max)/2, radius, hovered ? ImGui::GetColorU32(ImGuiCol_ButtonHovered) : ImGui::GetColorU32(ImGuiCol_Button), 24);
 
-	// Draw edge buttons
-	ImVec2 pos    = node_state.node_max - ImVec2{ 4, radius + 4 };
-	ImRect bounds = { pos, pos + ImVec2{ 8,8 } };
-	if (ImGui::ButtonBehavior(bounds, ImGui::GetID("add_out"), &hovered, nullptr))
-		fgne_select_out(graph, node_idx);
-	ImGui::GetWindowDrawList()->AddCircleFilled(bounds.GetCenter(), 4, hovered ? ImGui::GetColorU32(ImGuiCol_ButtonHovered) : ImGui::GetColorU32(ImGuiCol_Button));
-
-	pos    = node_state.node_min + ImVec2{ -4, radius - 4 };
-	bounds = { pos, pos + ImVec2{ 8,8 } };
-	if (ImGui::ButtonBehavior(bounds, ImGui::GetID("add_in"), &hovered, nullptr))
-		fgne_select_in(graph, node_idx);
-	ImGui::GetWindowDrawList()->AddCircleFilled(bounds.GetCenter(), 4, hovered ? ImGui::GetColorU32(ImGuiCol_ButtonHovered) : ImGui::GetColorU32(ImGuiCol_Button));
-
-	// Dragging behavior
-	if (pressed)
-		ImGui::ResetMouseDragDelta(0);
-	if (held) {
-		node.position[0] += ImGui::GetMouseDragDelta(0).x;
-		node.position[1] += ImGui::GetMouseDragDelta(0).y;
-		ImGui::ResetMouseDragDelta(0);
-	}
-	if (node.position[0] < 0)
-		node.position[0] = 0;
-	if (node.position[1] < 0)
-		node.position[1] = 0;
+	return held;
 }
 
 ///////////////////////////////////////////
