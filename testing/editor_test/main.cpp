@@ -30,8 +30,16 @@ GLFWwindow *window;
 int window_width = 1280;
 int window_height = 720;
 
-char          app_library_file[1024];
-fgn_library_t app_library = {};
+char                 app_library_file[1024];
+fgn_library_t        app_library = {};
+fgne_editor_config_t app_config = {
+	fgne_shell_default,
+	fgne_meat_kvps,
+	fgne_edge_curve,
+	fgne_inouts_default,
+	fgne_newnode_default,
+	false
+};
 
 void editor_window();
 bool open_file(char *result, uint32_t result_max, bool save);
@@ -116,6 +124,10 @@ int main(int, char**)
         style.WindowRounding = 0.0f;
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
     }
+	style.WindowBorderSize = 0;
+	style.WindowRounding = 0;
+	style.WindowPadding = { 0,0 };
+	style.ChildBorderSize = 0;
 	//style.WindowPadding = { 0,0 };
 
     // Setup Platform/Renderer bindings
@@ -138,7 +150,7 @@ int main(int, char**)
     //IM_ASSERT(font != NULL);
 
     // Our state
-    bool show_demo_window = false;
+    bool show_demo_window = true;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	sprintf_s(app_library_file, "test.fgn");
@@ -190,7 +202,9 @@ void editor_window() {
 	ImGui::SetNextWindowSize({(float)window_width, (float)window_height});
 	ImGui::SetNextWindowPos({0, 0});
 	ImGui::Begin("Graph", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_MenuBar );
-	
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 4);
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {16,8});
 	if (ImGui::BeginMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("New")) {
@@ -227,7 +241,52 @@ void editor_window() {
 			}
 			ImGui::EndMenu();
 		}
-		if (ImGui::BeginMenu("View")) {
+		if (ImGui::BeginMenu("Options")) {
+			ImGui::MenuItem("Ask for node Id", nullptr, &app_config.ask_for_id);
+			ImGui::Separator();
+			if (ImGui::BeginMenu("Node Visuals")) {
+
+				bool kvps = app_config.meat_func == fgne_meat_kvps;
+				bool name = app_config.meat_func == fgne_meat_name;
+				ImGui::MenuItem("Node Contents", nullptr, nullptr, false);
+				if (ImGui::MenuItem("Key value pairs", nullptr, kvps))
+					app_config.meat_func = fgne_meat_kvps;
+				if (ImGui::MenuItem("Id only", nullptr, name))
+					app_config.meat_func = fgne_meat_name;
+				ImGui::Separator();
+
+				bool box    = app_config.shell_func == fgne_shell_default;
+				bool circle = app_config.shell_func == fgne_shell_circle;
+				ImGui::MenuItem("Node Shell", nullptr, nullptr, false);
+				if (ImGui::MenuItem("Default", nullptr, box))
+					app_config.shell_func = fgne_shell_default;
+				if (ImGui::MenuItem("Circle", nullptr, circle))
+					app_config.shell_func = fgne_shell_circle;
+				
+				ImGui::EndMenu();
+			}
+			if (ImGui::BeginMenu("Edge Visuals")) {
+				bool straight = app_config.edge_func == fgne_edge_straight;
+				bool curved   = app_config.edge_func == fgne_edge_curve;
+				ImGui::MenuItem("Line Type", nullptr, nullptr, false);
+				if (ImGui::MenuItem("Straight", nullptr, straight))
+					app_config.edge_func = fgne_edge_straight;
+				if (ImGui::MenuItem("Curved", nullptr, curved))
+					app_config.edge_func = fgne_edge_curve;
+				ImGui::Separator();
+
+				bool box    = app_config.inout_func == fgne_inouts_default;
+				bool center = app_config.inout_func == fgne_inouts_center;
+				bool circle = app_config.inout_func == fgne_inouts_circle;
+				ImGui::MenuItem("Line Start", nullptr, nullptr, false);
+				if (ImGui::MenuItem("Box", nullptr, box))
+					app_config.inout_func = fgne_inouts_default;
+				if (ImGui::MenuItem("Center", nullptr, center))
+					app_config.inout_func = fgne_inouts_center;
+				if (ImGui::MenuItem("Circle", nullptr, circle))
+					app_config.inout_func = fgne_inouts_circle;
+				ImGui::EndMenu();
+			}
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("About")) {
@@ -235,10 +294,12 @@ void editor_window() {
 		}
 		ImGui::EndMenuBar();
 	}
+	ImGui::PopStyleVar();
 
 	static fgne_editor_state_t state;
-	fgne_draw(app_library, state);
+	fgne_draw(app_library, state, &app_config);
 
+	ImGui::PopStyleVar();
 	ImGui::End();
 }
 
