@@ -816,7 +816,7 @@ bool  fgn_parse_float2(fgn_parse_state_t state, const char *value_text, void *ou
 	return true;
 }
 char *fgn_write_float2(fgn_parse_state_t state,void *value) {
-	if (((float *)value)[0] == 0 && ((float *)value)[1] == 0) return false;
+	if (((float *)value)[0] == 0 && ((float *)value)[1] == 0) return nullptr;
 	return _fgn_str_make("%g, %g", ((float*)value)[0], ((float*)value)[1]);
 }
 bool  fgn_parse_float3(fgn_parse_state_t state, const char *value_text, void *out_data) {
@@ -828,7 +828,7 @@ bool  fgn_parse_float3(fgn_parse_state_t state, const char *value_text, void *ou
 	return true;
 }
 char *fgn_write_float3(fgn_parse_state_t state, void *value) {
-	if (((float *)value)[0] == 0 && ((float *)value)[1] == 0 && ((float *)value)[2] == 0) return false;
+	if (((float *)value)[0] == 0 && ((float *)value)[1] == 0 && ((float *)value)[2] == 0) return nullptr;
 	return _fgn_str_make("%g, %g, %g", ((float*)value)[0], ((float*)value)[1], ((float*)value)[2]);
 }
 bool  fgn_parse_int32 (fgn_parse_state_t state, const char *value_text, void *out_data) {
